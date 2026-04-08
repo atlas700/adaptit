@@ -19,7 +19,9 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@adaptit/db": ["./packages/db/src/index.ts"],
+      "@adaptit/db/*": ["./packages/db/src/*"]
     }
   },
   "include": [
