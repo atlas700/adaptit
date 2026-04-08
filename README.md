@@ -1,36 +1,213 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Adaptit
+
+Adaptit is an open-source AI-powered adaptive learning platform.
+
+The product goal is to turn a topic into a structured learning experience with learning paths, modules, lessons, progress tracking, and organization support. This repository is still early in development, so the codebase currently contains the web app foundation and the first PostgreSQL + Drizzle database package.
+
+## What Exists Today
+
+- Next.js app in [`src/app`](./src/app)
+- Shared database package in [`packages/db`](./packages/db)
+- Drizzle config in [`drizzle.config.ts`](./drizzle.config.ts)
+- Initial PostgreSQL schema and migration for:
+  - users
+  - organizations
+  - organization memberships
+  - workspaces
+  - subscriptions
+  - learning paths
+  - learning modules
+  - lessons
+  - lesson progress
+  - quiz attempts
+
+## Intended Architecture
+
+The long-term architecture described in [`AGENTS.md`](./AGENTS.md) is:
+
+- `apps/web` for the frontend
+- `apps/server` for API and business logic
+- `packages/db` for the database layer
+- `packages/ai` for AI generation pipelines
+
+The repository is not fully split into those directories yet. Right now, the Next.js app lives in `src/`, and the database layer already lives in `packages/db`.
+
+## Tech Stack
+
+- Next.js 16
+- React 19
+- TypeScript
+- PostgreSQL
+- Drizzle ORM
+- Tailwind CSS
+- Planned UI direction: `shadcn/ui`
+
+## Repository Structure
+
+```text
+adaptit/
+├─ src/
+│  └─ app/                  # Next.js App Router entrypoint
+├─ packages/
+│  └─ db/
+│     ├─ drizzle/           # Generated SQL migrations + metadata
+│     └─ src/
+│        ├─ client.ts       # Drizzle/Postgres client
+│        ├─ env.ts          # DATABASE_URL handling
+│        ├─ index.ts        # package exports
+│        └─ schema/         # schema modules + relations
+├─ drizzle.config.ts        # Drizzle CLI configuration
+├─ AGENTS.md                # project architecture and coding rules
+└─ README.md
+```
+
+## Database Layout
+
+The base schema is organized by concern instead of one giant file:
+
+- [`packages/db/src/schema/tenancy.ts`](./packages/db/src/schema/tenancy.ts)
+  - users, organizations, memberships, workspaces
+- [`packages/db/src/schema/auth.ts`](./packages/db/src/schema/auth.ts)
+  - accounts, sessions, verification tokens
+- [`packages/db/src/schema/billing.ts`](./packages/db/src/schema/billing.ts)
+  - workspace subscriptions
+- [`packages/db/src/schema/learning.ts`](./packages/db/src/schema/learning.ts)
+  - learning paths, modules, lessons
+- [`packages/db/src/schema/progress.ts`](./packages/db/src/schema/progress.ts)
+  - lesson progress, quiz attempts
+- [`packages/db/src/schema/relations.ts`](./packages/db/src/schema/relations.ts)
+  - Drizzle relations across the schema
+
+The ownership model uses `workspaces` as the main boundary so the product can support both:
+
+- personal workspaces
+- organization-backed workspaces
+
+That avoids tying app data directly to only users or only organizations.
 
 ## Getting Started
 
-First, run the development server:
+### 1. Install dependencies
+
+```bash
+npm install
+```
+
+### 2. Create your local environment file
+
+Use the example file as the starting point:
+
+```bash
+cp .env.example .env
+```
+
+If you are on Windows PowerShell:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Then set `DATABASE_URL` to a working PostgreSQL connection string.
+
+### 3. Generate or apply the database schema
+
+Available commands:
+
+```bash
+npm run db:generate
+npm run db:push
+npm run db:migrate
+npm run db:studio
+```
+
+Recommended local flow:
+
+1. Update schema files in `packages/db/src/schema`
+2. Run `npm run db:generate`
+3. Apply changes with `npm run db:push` for local development
+4. Use `npm run db:migrate` when running migrations in a migration-based environment
+
+### 4. Start the app
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 5. Run checks
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run lint
+npm run build
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Contribution Guide
 
-## Learn More
+### General expectations
 
-To learn more about Next.js, take a look at the following resources:
+- Keep TypeScript strict and explicit
+- Prefer simple, readable solutions over clever abstractions
+- Separate UI, logic, and data access
+- Do not put business logic inside React components
+- Use repositories/services for database-backed logic
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Before opening a PR
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Make sure the app builds
+- Make sure lint passes
+- If you changed the schema, include the generated migration files
+- Keep changes scoped to one feature or one concern when possible
 
-## Deploy on Vercel
+### For database changes
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+When changing the database:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Edit the relevant files in [`packages/db/src/schema`](./packages/db/src/schema)
+2. Regenerate migrations with `npm run db:generate`
+3. Review the generated SQL in [`packages/db/drizzle`](./packages/db/drizzle)
+4. Include both schema code and generated migration files in your commit
+
+### For application features
+
+A good implementation order for contributors is:
+
+1. define or extend the schema only when the feature needs it
+2. add the data access layer
+3. add business logic
+4. add UI last
+
+This keeps the codebase easier to review and prevents speculative schema design.
+
+## Project Rules
+
+Read [`AGENTS.md`](./AGENTS.md) before making substantial changes. It documents the product direction and coding expectations, including:
+
+- architecture rules
+- database guidance
+- frontend rules
+- backend validation requirements
+- AI generation constraints
+
+One important repo rule: this project uses a newer Next.js version with breaking changes, so contributors should check the relevant docs in `node_modules/next/dist/docs/` before making framework-specific changes.
+
+## Current Status
+
+This repository is in the foundation stage.
+
+What is already in place:
+
+- Next.js app scaffold
+- PostgreSQL + Drizzle package
+- initial multi-tenant learning schema
+
+What still needs to be built:
+
+- real feature pages and flows
+- auth integration
+- repository and service layers
+- billing integration
+- AI generation pipeline
+- `shadcn/ui` component setup
+
+## License
+
+No license file is present yet. If you want outside contributors to use, modify, and redistribute the project clearly, add an explicit open-source license to the repository.
